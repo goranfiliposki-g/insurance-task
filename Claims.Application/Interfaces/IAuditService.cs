@@ -1,7 +1,9 @@
+using Claims.Application.Common;
+
 namespace Claims.Application.Interfaces;
 
 public interface IAuditService
 {
-    Task AuditClaimAsync(string id, string httpRequestType, CancellationToken cancellationToken = default);
-    Task AuditCoverAsync(string id, string httpRequestType, CancellationToken cancellationToken = default);
+    Task AuditClaimAsync(string id, AuditAction auditAction, CancellationToken cancellationToken = default);
+    Task AuditCoverAsync(string id, AuditAction auditAction, CancellationToken cancellationToken = default);
 }

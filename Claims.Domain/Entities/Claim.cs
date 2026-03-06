@@ -2,6 +2,7 @@ using Claims.Domain.Enums;
 
 namespace Claims.Domain.Entities;
 
+/// <summary>Insurance claim entity.</summary>
 public class Claim
 {
     public string Id { get; set; } = string.Empty;

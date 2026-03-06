@@ -2,6 +2,7 @@ using Claims.Application.Common;
 using Claims.Application.DTOs;
 using Claims.Application.Interfaces;
 using Claims.Domain.Entities;
+using FluentValidation;
 
 namespace Claims.Application.Services;
 
@@ -10,18 +11,27 @@ public class ClaimService : IClaimService
     private readonly IClaimRepository _repository;
     private readonly ICoverRepository _coverRepository;
     private readonly IAuditService _auditService;
+    private readonly IValidator<CreateClaimDto> _validator;
 
-    public ClaimService(IClaimRepository repository, ICoverRepository coverRepository, IAuditService auditService)
+    public ClaimService(
+        IClaimRepository repository,
+        ICoverRepository coverRepository,
+        IAuditService auditService,
+        IValidator<CreateClaimDto> validator)
     {
         _repository = repository;
         _coverRepository = coverRepository;
         _auditService = auditService;
+        _validator = validator;
     }
 
     public async Task<string> CreateAsync(CreateClaimDto dto)
     {
-
-        await ValidateCreate(dto, _coverRepository);
+        var result = await _validator.ValidateAsync(dto);
+        if (!result.IsValid)
+        {
+            throw new Common.ValidationException(result.Errors.Select(e => e.ErrorMessage).ToList());
+        }
 
         var claim = new Claim
         {
@@ -34,58 +44,28 @@ public class ClaimService : IClaimService
         };
 
         await _repository.AddAsync(claim);
-        _ = _auditService.AuditClaimAsync(claim.Id, "POST"); 
+        _ = _auditService.AuditClaimAsync(claim.Id, AuditAction.Create); 
         return claim.Id;
     }
 
-    public async Task<ClaimDto?> GetByIdAsync(string id)
+    public async Task<Claim?> GetByIdAsync(string id)
     {
-        var claim = await _repository.GetByIdAsync(id);
-        return claim == null ? null : ToDto(claim);
+        return await _repository.GetByIdAsync(id);
     }
 
-    public async Task<IEnumerable<ClaimDto>> GetAllAsync()
+    public async Task<IReadOnlyList<Claim>> GetAllAsync()
     {
-        var claims = await _repository.GetAllAsync();
-        return claims.Select(ToDto);
+        return await _repository.GetAllAsync();
     }
 
-    public async Task DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(string id)
     {
-        _ = _auditService.AuditClaimAsync(id, "DELETE");
-        await _repository.DeleteAsync(id);
-    }
-
-    private static ClaimDto ToDto(Claim c) =>
-        new(c.Id, c.CoverId, c.Created, c.Name, c.Type, c.DamageCost);
-
-    private async Task ValidateCreate(CreateClaimDto dto, ICoverRepository coverRepository)
-    {
-        var errors = new List<string>();
-
-        if (dto.DamageCost > 100_000m)
+        var deleted = await _repository.DeleteAsync(id);
+        if (deleted)
         {
-            errors.Add("DamageCost cannot exceed 100,000.");
+            _ = _auditService.AuditClaimAsync(id, AuditAction.Delete);
         }
 
-        var cover = await coverRepository.GetByIdAsync(dto.CoverId);
-        if (cover == null)
-        {
-            errors.Add("Cover not found.");
-        }
-        else
-        {
-            var createdDate = dto.Created.Date;
-            if (createdDate < cover.StartDate.Date || createdDate > cover.EndDate.Date)
-            {
-                errors.Add("Created date must be within the related Cover's period.");
-            }
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationException(errors);
-        }
-
+        return deleted;
     }
 }

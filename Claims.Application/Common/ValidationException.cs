@@ -1,5 +1,6 @@
 namespace Claims.Application.Common;
 
+/// <summary>Thrown when request or domain validation fails.</summary>
 public class ValidationException : Exception
 {
     public IReadOnlyList<string> Errors { get; }

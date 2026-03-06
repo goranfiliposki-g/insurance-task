@@ -1,13 +1,14 @@
 using Claims.Application.DTOs;
 using Claims.Domain.Entities;
+using Claims.Domain.Enums;
 
 namespace Claims.Application.Interfaces;
 
 public interface ICoverService
 {
     Task<string> CreateAsync(CreateCoverDto dto);
-    Task<CoverDto?> GetByIdAsync(string id);
-    Task<IEnumerable<CoverDto>> GetAllAsync();
-    Task DeleteAsync(string id);
-    decimal ComputePremium(DateTime startDate, DateTime endDate, CoverType coverType);
+    Task<Cover?> GetByIdAsync(string id);
+    Task<IReadOnlyList<Cover>> GetAllAsync();
+    Task<bool> DeleteAsync(string id);
+    decimal ComputePremium(DateOnly startDate, DateOnly endDate, string coverType);
 }

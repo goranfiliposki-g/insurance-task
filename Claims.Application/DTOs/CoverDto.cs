@@ -1,5 +1,5 @@
-using Claims.Domain.Entities;
+using Claims.Domain.Enums;
 
 namespace Claims.Application.DTOs;
 
-public record CoverDto(string Id, DateTime StartDate, DateTime EndDate, CoverType Type, decimal Premium);
+public record CoverDto(string Id, DateOnly StartDate, DateOnly EndDate, CoverType Type, decimal Premium);

@@ -1,3 +1,4 @@
+using Claims.API.Models;
 using Claims.Application.DTOs;
 using Claims.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -35,21 +36,22 @@ public class ClaimsController : ControllerBase
     public async Task<IActionResult> GetById(string id)
     {
         var claim = await _service.GetByIdAsync(id);
-        return claim == null ? NotFound() : Ok(claim);
+        return claim == null ? NotFound() : Ok(claim.ToDto());
     }
 
     /// <summary>List all claims.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<ClaimDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<ClaimDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
-        => Ok(await _service.GetAllAsync());
+        => Ok((await _service.GetAllAsync()).Select(c => c.ToDto()).ToList());
 
-    /// <summary>Delete a claim by id.</summary>
+    /// <summary>Delete a claim by id. Returns 404 if not found.</summary>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id)
     {
-        await _service.DeleteAsync(id);
-        return NoContent();
+        var deleted = await _service.DeleteAsync(id);
+        return deleted ? NoContent() : NotFound();
     }
 }

@@ -1,6 +1,8 @@
 using Claims.Application.Interfaces;
 using Claims.Application.Services;
+using Claims.Application.Validators;
 using Claims.Infrastructure;
+using FluentValidation;
 
 namespace Claims.API;
 
@@ -23,6 +25,8 @@ public class Program
         });
 
         builder.Services.AddClaimsInfrastructure();
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateCoverDtoValidator>();
+        builder.Services.AddSingleton<IPremiumPolicy, DefaultPremiumPolicy>();
         builder.Services.AddScoped<IClaimService, ClaimService>();
         builder.Services.AddScoped<IPremiumCalculator, PremiumCalculator>();
         builder.Services.AddScoped<ICoverService, CoverService>();

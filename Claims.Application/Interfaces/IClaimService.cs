@@ -1,11 +1,12 @@
 using Claims.Application.DTOs;
+using Claims.Domain.Entities;
 
 namespace Claims.Application.Interfaces;
 
 public interface IClaimService
 {
     Task<string> CreateAsync(CreateClaimDto dto);
-    Task<ClaimDto?> GetByIdAsync(string id);
-    Task<IEnumerable<ClaimDto>> GetAllAsync();
-    Task DeleteAsync(string id);
+    Task<Claim?> GetByIdAsync(string id);
+    Task<IReadOnlyList<Claim>> GetAllAsync();
+    Task<bool> DeleteAsync(string id);
 }

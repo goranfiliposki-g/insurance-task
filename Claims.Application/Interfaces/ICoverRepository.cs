@@ -6,6 +6,6 @@ public interface ICoverRepository
 {
     Task AddAsync(Cover cover);
     Task<Cover?> GetByIdAsync(string id);
-    Task<IEnumerable<Cover>> GetAllAsync();
-    Task DeleteAsync(string id);
+    Task<IReadOnlyList<Cover>> GetAllAsync();
+    Task<bool> DeleteAsync(string id);
 }

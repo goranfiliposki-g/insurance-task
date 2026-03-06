@@ -1,6 +1,6 @@
+using Claims.API.Models;
 using Claims.Application.DTOs;
 using Claims.Application.Interfaces;
-using Claims.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claims.API.Controllers;
@@ -35,27 +35,29 @@ public class CoversController : ControllerBase
     public async Task<IActionResult> GetById(string id)
     {
         var cover = await _service.GetByIdAsync(id);
-        return cover == null ? NotFound() : Ok(cover);
+        return cover == null ? NotFound() : Ok(cover.ToDto());
     }
 
     /// <summary>List all covers.</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<CoverDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<CoverDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
-        => Ok(await _service.GetAllAsync());
+        => Ok((await _service.GetAllAsync()).Select(c => c.ToDto()).ToList());
 
-    /// <summary>Delete a cover by id.</summary>
+    /// <summary>Delete a cover by id. Returns 404 if not found.</summary>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id)
     {
-        await _service.DeleteAsync(id);
-        return NoContent();
+        var deleted = await _service.DeleteAsync(id);
+        return deleted ? NoContent() : NotFound();
     }
 
-    /// <summary>Compute premium for given period and cover type (no persistence).</summary>
+    /// <summary>Compute premium for given period and cover type (no persistence). Period is in calendar days (date-only). Cover type: Yacht, PassengerShip, ContainerShip, BulkCarrier, Tanker.</summary>
     [HttpPost("compute")]
     [ProducesResponseType(typeof(decimal), StatusCodes.Status200OK)]
-    public IActionResult ComputePremium([FromQuery] DateTime startDate, [FromQuery] DateTime endDate, [FromQuery] CoverType coverType)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult ComputePremium([FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate, [FromQuery] string coverType)
         => Ok(_service.ComputePremium(startDate, endDate, coverType));
 }

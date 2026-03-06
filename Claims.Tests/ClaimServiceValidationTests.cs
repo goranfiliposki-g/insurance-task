@@ -2,6 +2,7 @@ using Claims.Application.Common;
 using Claims.Application.DTOs;
 using Claims.Application.Interfaces;
 using Claims.Application.Services;
+using Claims.Application.Validators;
 using Claims.Domain.Entities;
 using Claims.Domain.Enums;
 using Moq;
@@ -19,14 +20,15 @@ public class ClaimServiceValidationTests
         var cover = new Cover
         {
             Id = "c1",
-            StartDate = DateTime.UtcNow.AddDays(-10),
-            EndDate = DateTime.UtcNow.AddDays(20),
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-10)),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(20)),
             Type = CoverType.Yacht,
             Premium = 1000
         };
         coverRepo.Setup(r => r.GetByIdAsync("c1")).ReturnsAsync(cover);
         var audit = new Mock<IAuditService>();
-        var service = new ClaimService(repo.Object, coverRepo.Object, audit.Object);
+        var validator = new CreateClaimDtoValidator(coverRepo.Object);
+        var service = new ClaimService(repo.Object, coverRepo.Object, audit.Object, validator);
         var dto = new CreateClaimDto(
             CoverId: "c1",
             Created: DateTime.UtcNow,
@@ -46,14 +48,15 @@ public class ClaimServiceValidationTests
         var cover = new Cover
         {
             Id = "c1",
-            StartDate = new DateTime(2025, 1, 1),
-            EndDate = new DateTime(2025, 1, 31),
+            StartDate = new DateOnly(2025, 1, 1),
+            EndDate = new DateOnly(2025, 1, 31),
             Type = CoverType.Yacht,
             Premium = 1000
         };
         coverRepo.Setup(r => r.GetByIdAsync("c1")).ReturnsAsync(cover);
         var audit = new Mock<IAuditService>();
-        var service = new ClaimService(repo.Object, coverRepo.Object, audit.Object);
+        var validator = new CreateClaimDtoValidator(coverRepo.Object);
+        var service = new ClaimService(repo.Object, coverRepo.Object, audit.Object, validator);
         var dto = new CreateClaimDto(
             CoverId: "c1",
             Created: new DateTime(2025, 2, 15), // outside cover
@@ -74,14 +77,15 @@ public class ClaimServiceValidationTests
         var cover = new Cover
         {
             Id = "c1",
-            StartDate = DateTime.UtcNow.AddDays(-10),
-            EndDate = DateTime.UtcNow.AddDays(20),
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-10)),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(20)),
             Type = CoverType.Yacht,
             Premium = 1000
         };
         coverRepo.Setup(r => r.GetByIdAsync("c1")).ReturnsAsync(cover);
         var audit = new Mock<IAuditService>();
-        var service = new ClaimService(repo.Object, coverRepo.Object, audit.Object);
+        var validator = new CreateClaimDtoValidator(coverRepo.Object);
+        var service = new ClaimService(repo.Object, coverRepo.Object, audit.Object, validator);
         var dto = new CreateClaimDto(
             CoverId: "c1",
             Created: DateTime.UtcNow,

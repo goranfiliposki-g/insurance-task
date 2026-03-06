@@ -2,27 +2,37 @@ using Claims.Application.Common;
 using Claims.Application.DTOs;
 using Claims.Application.Interfaces;
 using Claims.Domain.Entities;
+using Claims.Domain.Enums;
+using FluentValidation;
 
 namespace Claims.Application.Services;
 
 public class CoverService : ICoverService
 {
-    private const int MaxInsuranceDays = 365;
-
     private readonly ICoverRepository _repository;
     private readonly IAuditService _auditService;
     private readonly IPremiumCalculator _premiumCalculator;
+    private readonly IValidator<CreateCoverDto> _validator;
 
-    public CoverService(ICoverRepository repository, IAuditService auditService, IPremiumCalculator premiumCalculator)
+    public CoverService(
+        ICoverRepository repository,
+        IAuditService auditService,
+        IPremiumCalculator premiumCalculator,
+        IValidator<CreateCoverDto> validator)
     {
         _repository = repository;
         _auditService = auditService;
         _premiumCalculator = premiumCalculator;
+        _validator = validator;
     }
 
     public async Task<string> CreateAsync(CreateCoverDto dto)
     {
-        ValidateCreate(dto);
+        var result = await _validator.ValidateAsync(dto);
+        if (!result.IsValid)
+        {
+            throw new Common.ValidationException(result.Errors.Select(e => e.ErrorMessage).ToList());
+        }
 
         var premium = _premiumCalculator.Compute(dto.StartDate, dto.EndDate, dto.Type);
         var cover = new Cover
@@ -34,57 +44,38 @@ public class CoverService : ICoverService
             Premium = premium
         };
         await _repository.AddAsync(cover);
-        _ = _auditService.AuditCoverAsync(cover.Id, "POST");
+        _ = _auditService.AuditCoverAsync(cover.Id, AuditAction.Create);
         return cover.Id;
     }
 
-    public async Task<CoverDto?> GetByIdAsync(string id)
+    public async Task<Cover?> GetByIdAsync(string id)
     {
-        var cover = await _repository.GetByIdAsync(id);
-        return cover == null ? null : ToDto(cover);
+        return await _repository.GetByIdAsync(id);
     }
 
-    public async Task<IEnumerable<CoverDto>> GetAllAsync()
+    public async Task<IReadOnlyList<Cover>> GetAllAsync()
     {
-        var covers = await _repository.GetAllAsync();
-        return covers.Select(ToDto);
+        return await _repository.GetAllAsync();
     }
 
-    public async Task DeleteAsync(string id)
+    public async Task<bool> DeleteAsync(string id)
     {
-        _ = _auditService.AuditCoverAsync(id, "DELETE");
-        await _repository.DeleteAsync(id);
+        var deleted = await _repository.DeleteAsync(id);
+        if (deleted)
+        {
+            _ = _auditService.AuditCoverAsync(id, AuditAction.Delete);
+        }
+
+        return deleted;
     }
 
-    public decimal ComputePremium(DateTime startDate, DateTime endDate, CoverType coverType)
-        => _premiumCalculator.Compute(startDate, endDate, coverType);
-
-    private static void ValidateCreate(CreateCoverDto dto)
+    public decimal ComputePremium(DateOnly startDate, DateOnly endDate, string coverType)
     {
-        var errors = new List<string>();
-
-        if (dto.StartDate.Date < DateTime.UtcNow.Date)
+        if (!Enum.TryParse<CoverType>(coverType, ignoreCase: true, out var type))
         {
-            errors.Add("StartDate cannot be in the past.");
+            throw new Common.ValidationException(new[] { $"Unknown cover type: '{coverType}'. Valid values: {string.Join(", ", Enum.GetNames<CoverType>())}" });
         }
 
-        var periodDays = (dto.EndDate - dto.StartDate).TotalDays;
-        if (periodDays > MaxInsuranceDays)
-        {
-            errors.Add("Total insurance period cannot exceed 1 year.");
-        }
-
-        if (dto.EndDate < dto.StartDate)
-        {
-            errors.Add("EndDate must be after StartDate.");
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationException(errors);
-        }
+        return _premiumCalculator.Compute(startDate, endDate, type);
     }
-
-    private static CoverDto ToDto(Cover c) =>
-        new(c.Id, c.StartDate, c.EndDate, c.Type, c.Premium);
 }

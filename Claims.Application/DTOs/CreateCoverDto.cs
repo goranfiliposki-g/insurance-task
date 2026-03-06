@@ -1,5 +1,6 @@
-using Claims.Domain.Entities;
+using Claims.Domain.Enums;
 
 namespace Claims.Application.DTOs;
 
-public record CreateCoverDto(DateTime StartDate, DateTime EndDate, CoverType Type);
+/// <summary>Cover period uses calendar days only (no time-of-day).</summary>
+public record CreateCoverDto(DateOnly StartDate, DateOnly EndDate, CoverType Type);

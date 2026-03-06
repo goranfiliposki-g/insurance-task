@@ -1,7 +1,6 @@
-﻿
-
 namespace Claims.Domain.Enums
 {
+    /// <summary>Type of claim.</summary>
     public enum ClaimType
     {
         Collision = 0,

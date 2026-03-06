@@ -1,31 +1,48 @@
 using System.Threading.Channels;
+using Claims.Application.Common;
 using Claims.Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Claims.Infrastructure.Auditing;
 
 public sealed class AuditService : IAuditService, IHostedService
 {
-    private readonly Channel<AuditEntryMessage> _channel = Channel.CreateUnbounded<AuditEntryMessage>(new UnboundedChannelOptions { SingleReader = true });
+    private const int ChannelCapacity = 4096;
+    private const int MaxRetries = 3;
+    private const int RetryDelayMs = 100;
+
+    private readonly Channel<AuditEntryMessage> _channel = Channel.CreateBounded<AuditEntryMessage>(
+        new BoundedChannelOptions(ChannelCapacity) { SingleReader = true });
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<AuditService> _logger;
     private Task? _processTask;
     private readonly CancellationTokenSource _cts = new();
 
-    public AuditService(IServiceProvider serviceProvider)
+    public AuditService(IServiceProvider serviceProvider, ILogger<AuditService> logger)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
-    public Task AuditClaimAsync(string id, string httpRequestType, CancellationToken cancellationToken = default)
+    public Task AuditClaimAsync(string id, AuditAction auditAction, CancellationToken cancellationToken = default)
     {
-        _channel.Writer.TryWrite(new AuditEntryMessage(true, id, httpRequestType));
-        return Task.CompletedTask;
+        return TryEnqueue(new AuditEntryMessage(true, id, auditAction.ToHttpMethodString()), "Claim", id);
     }
 
-    public Task AuditCoverAsync(string id, string httpRequestType, CancellationToken cancellationToken = default)
+    public Task AuditCoverAsync(string id, AuditAction auditAction, CancellationToken cancellationToken = default)
     {
-        _channel.Writer.TryWrite(new AuditEntryMessage(false, id, httpRequestType));
+        return TryEnqueue(new AuditEntryMessage(false, id, auditAction.ToHttpMethodString()), "Cover", id);
+    }
+
+    private Task TryEnqueue(AuditEntryMessage message, string kind, string id)
+    {
+        if (!_channel.Writer.TryWrite(message))
+        {
+            _logger.LogWarning("Audit channel full, dropping {Kind} audit entry for Id {Id}", kind, id);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -47,19 +64,44 @@ public sealed class AuditService : IAuditService, IHostedService
     {
         await foreach (var message in _channel.Reader.ReadAllAsync(cancellationToken))
         {
-            try
+            var attempt = 0;
+            while (true)
             {
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
-                if (message.IsClaim)
-                    db.ClaimAudits.Add(new ClaimAudit { ClaimId = message.Id, HttpRequestType = message.HttpRequestType, Created = DateTime.UtcNow });
-                else
-                    db.CoverAudits.Add(new CoverAudit { CoverId = message.Id, HttpRequestType = message.HttpRequestType, Created = DateTime.UtcNow });
-                await db.SaveChangesAsync(cancellationToken);
-            }
-            catch
-            {
-               // log for prod.
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+                    if (message.IsClaim)
+                    {
+                        db.ClaimAudits.Add(new ClaimAudit { ClaimId = message.Id, HttpRequestType = message.HttpRequestType, Created = DateTime.UtcNow });
+                    }
+                    else
+                    {
+                        db.CoverAudits.Add(new CoverAudit { CoverId = message.Id, HttpRequestType = message.HttpRequestType, Created = DateTime.UtcNow });
+                    }
+
+                    await db.SaveChangesAsync(cancellationToken);
+                    break;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError(ex, "Audit write failed for {Kind} Id {Id}, attempt {Attempt}/{MaxRetries}",
+                        message.IsClaim ? "Claim" : "Cover", message.Id, attempt, MaxRetries);
+
+                    if (attempt >= MaxRetries)
+                    {
+                        _logger.LogError("Audit entry dropped after {MaxRetries} failures: {Kind} Id {Id}, HttpRequestType {HttpRequestType}",
+                            MaxRetries, message.IsClaim ? "Claim" : "Cover", message.Id, message.HttpRequestType);
+                        break;
+                    }
+
+                    await Task.Delay(RetryDelayMs, cancellationToken);
+                }
             }
         }
     }
