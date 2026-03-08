@@ -27,8 +27,8 @@ public class Program
         builder.Services.AddClaimsInfrastructure();
         builder.Services.AddValidatorsFromAssemblyContaining<CreateCoverDtoValidator>();
         builder.Services.AddSingleton<IPremiumPolicy, DefaultPremiumPolicy>();
+        builder.Services.AddSingleton<IPremiumCalculator, PremiumCalculator>();
         builder.Services.AddScoped<IClaimService, ClaimService>();
-        builder.Services.AddScoped<IPremiumCalculator, PremiumCalculator>();
         builder.Services.AddScoped<ICoverService, CoverService>();
 
         var app = builder.Build();

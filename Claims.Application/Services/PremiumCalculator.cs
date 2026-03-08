@@ -11,17 +11,17 @@ namespace Claims.Application.Services;
 /// </summary>
 public class PremiumCalculator : IPremiumCalculator
 {
-    private readonly IPremiumPolicy _policy;
-
-    public PremiumCalculator(IPremiumPolicy policy)
+    public Task<decimal> ComputeAsync(DateOnly startDate, DateOnly endDate, CoverType coverType,
+        IPremiumPolicy policy, CancellationToken cancellation = default)
     {
-        _policy = policy ?? throw new ArgumentNullException(nameof(policy));
+        return Task.FromResult(Compute(startDate, endDate, coverType, policy, cancellation));
     }
 
-    public decimal Compute(DateOnly startDate, DateOnly endDate, CoverType coverType)
+    private decimal Compute(DateOnly startDate, DateOnly endDate, CoverType coverType,
+        IPremiumPolicy policy, CancellationToken cancellation)
     {
-        var multiplier = _policy.GetTypeMultiplier(coverType);
-        var premiumPerDay = _policy.BaseDayRate * multiplier;
+        var multiplier = policy.GetTypeMultiplier(coverType);
+        var premiumPerDay = policy.BaseDayRate * multiplier;
         var totalDays = endDate.DayNumber - startDate.DayNumber;
         if (totalDays <= 0)
         {
@@ -31,7 +31,7 @@ public class PremiumCalculator : IPremiumCalculator
         decimal total = 0;
         for (var dayIndex = 0; dayIndex < totalDays; dayIndex++)
         {
-            var dailyRate = premiumPerDay * _policy.GetDayDiscount(dayIndex, coverType);
+            var dailyRate = premiumPerDay * policy.GetDayDiscount(dayIndex, coverType);
             total += dailyRate;
         }
 

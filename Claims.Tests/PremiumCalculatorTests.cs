@@ -6,42 +6,43 @@ namespace Claims.Tests;
 
 public class PremiumCalculatorTests
 {
-    private readonly PremiumCalculator _calculator = new(new DefaultPremiumPolicy());
+    private readonly PremiumCalculator _calculator = new();
+    private readonly DefaultPremiumPolicy _defaultPolicy = new DefaultPremiumPolicy();
 
     [Fact]
-    public void Compute_Zero_Days_Returns_Zero()
+    public async Task Compute_Zero_Days_Returns_Zero()
     {
         var start = new DateOnly(2025, 1, 1);
-        var result = _calculator.Compute(start, start, CoverType.Yacht);
+        var result = await _calculator.ComputeAsync(start, start, CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         Assert.Equal(0, result);
     }
 
     [Fact]
-    public void Compute_30_Days_Yacht_Base_Rate_Times_1_1()
+    public async Task Compute_30_Days_Yacht_Base_Rate_Times_1_1()
     {
         var start = new DateOnly(2025, 1, 1);
         var end = start.AddDays(30);
-        var result = _calculator.Compute(start, end, CoverType.Yacht);
+        var result = await _calculator.ComputeAsync(start, end, CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         var expected = 30 * 1250m * 1.10m;
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void Compute_30_Days_Tanker_Base_Rate_Times_1_5()
+    public async Task Compute_30_Days_Tanker_Base_Rate_Times_1_5()
     {
         var start = new DateOnly(2025, 1, 1);
         var end = start.AddDays(30);
-        var result = _calculator.Compute(start, end, CoverType.Tanker);
+        var result = await _calculator.ComputeAsync(start, end, CoverType.Tanker, _defaultPolicy, TestContext.Current.CancellationToken);
         var expected = 30 * 1250m * 1.50m;
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void Compute_180_Days_Includes_First_30_Full_Then_70_SecondTier_Then_80_ThirdTier()
+    public async Task Compute_180_Days_Includes_First_30_Full_Then_70_SecondTier_Then_80_ThirdTier()
     {
         var start = new DateOnly(2025, 1, 1);
         var end = start.AddDays(180);
-        var result = _calculator.Compute(start, end, CoverType.Yacht);
+        var result = await _calculator.ComputeAsync(start, end, CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         var premiumPerDay = 1250m * 1.10m;
         var first30 = 30 * premiumPerDay;
         var days30to99 = 70 * premiumPerDay * 0.95m;
@@ -51,11 +52,11 @@ public class PremiumCalculatorTests
     }
 
     [Fact]
-    public void Compute_365_Days_Includes_All_Three_Tiers()
+    public async Task Compute_365_Days_Includes_All_Three_Tiers()
     {
         var start = new DateOnly(2025, 1, 1);
         var end = start.AddDays(365);
-        var result = _calculator.Compute(start, end, CoverType.PassengerShip);
+        var result = await _calculator.ComputeAsync(start, end, CoverType.PassengerShip, _defaultPolicy, TestContext.Current.CancellationToken);
         var premiumPerDay = 1250m * 1.20m;
         var first30 = 30 * premiumPerDay;
         var days30to99 = 70 * premiumPerDay * 0.98m;
@@ -65,35 +66,35 @@ public class PremiumCalculatorTests
     }
 
     [Fact]
-    public void Compute_Single_Day_Returns_One_Day_Full_Rate()
+    public async Task Compute_Single_Day_Returns_One_Day_Full_Rate()
     {
         var start = new DateOnly(2025, 1, 1);
         var end = start.AddDays(1);
-        var result = _calculator.Compute(start, end, CoverType.Yacht);
+        var result = await _calculator.ComputeAsync(start, end, CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         var expected = 1250m * 1.10m;
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void Compute_Day_30_Boundary_Last_Day_Full_Rate()
+    public async Task Compute_Day_30_Boundary_Last_Day_Full_Rate()
     {
         var start = new DateOnly(2025, 1, 1);
-        var result30 = _calculator.Compute(start, start.AddDays(30), CoverType.Yacht);
-        var result31 = _calculator.Compute(start, start.AddDays(31), CoverType.Yacht);
+        var result30 = await _calculator.ComputeAsync(start, start.AddDays(30), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
+        var result31 = await _calculator.ComputeAsync(start, start.AddDays(31), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         var premiumPerDay = 1250m * 1.10m;
         var expected30 = 30 * premiumPerDay;
         var expected31 = 30 * premiumPerDay + 1 * premiumPerDay * 0.95m;
         Assert.Equal(expected30, result30);
         Assert.Equal(expected31, result31);
     }
-
+    
     [Fact]
-    public void Compute_Day_100_Boundary_Third_Tier_Starts_At_Day_101()
+    public async Task Compute_Day_100_Boundary_Third_Tier_Starts_At_Day_101()
     {
         var start = new DateOnly(2025, 1, 1);
         var premiumPerDay = 1250m * 1.10m;
-        var result100 = _calculator.Compute(start, start.AddDays(100), CoverType.Yacht);
-        var result101 = _calculator.Compute(start, start.AddDays(101), CoverType.Yacht);
+        var result100 = await _calculator.ComputeAsync(start, start.AddDays(100), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
+        var result101 = await _calculator.ComputeAsync(start, start.AddDays(101), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         var expected100 = 30 * premiumPerDay + 70 * premiumPerDay * 0.95m;
         var expected101 = expected100 + 1 * premiumPerDay * 0.97m;
         Assert.Equal(expected100, result100);

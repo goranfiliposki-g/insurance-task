@@ -12,17 +12,20 @@ public class CoverService : ICoverService
     private readonly ICoverRepository _repository;
     private readonly IAuditService _auditService;
     private readonly IPremiumCalculator _premiumCalculator;
+    private readonly IPremiumPolicy _defaultPolicy;
     private readonly IValidator<CreateCoverDto> _validator;
 
     public CoverService(
         ICoverRepository repository,
         IAuditService auditService,
         IPremiumCalculator premiumCalculator,
+        IPremiumPolicy defaultPolicy,
         IValidator<CreateCoverDto> validator)
     {
         _repository = repository;
         _auditService = auditService;
         _premiumCalculator = premiumCalculator;
+        _defaultPolicy = defaultPolicy;
         _validator = validator;
     }
 
@@ -34,7 +37,7 @@ public class CoverService : ICoverService
             throw new Common.ValidationException(result.Errors.Select(e => e.ErrorMessage).ToList());
         }
 
-        var premium = _premiumCalculator.Compute(dto.StartDate, dto.EndDate, dto.Type);
+        var premium = await _premiumCalculator.ComputeAsync(dto.StartDate, dto.EndDate, dto.Type, _defaultPolicy);
         var cover = new Cover
         {
             Id = Guid.NewGuid().ToString(),
@@ -69,13 +72,13 @@ public class CoverService : ICoverService
         return deleted;
     }
 
-    public decimal ComputePremium(DateOnly startDate, DateOnly endDate, string coverType)
+    public async Task<decimal> ComputePremiumAsync(DateOnly startDate, DateOnly endDate, string coverType, CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<CoverType>(coverType, ignoreCase: true, out var type))
         {
             throw new Common.ValidationException(new[] { $"Unknown cover type: '{coverType}'. Valid values: {string.Join(", ", Enum.GetNames<CoverType>())}" });
         }
 
-        return _premiumCalculator.Compute(startDate, endDate, type);
+        return await _premiumCalculator.ComputeAsync(startDate, endDate, type, _defaultPolicy);
     }
 }

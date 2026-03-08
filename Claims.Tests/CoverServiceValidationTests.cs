@@ -17,9 +17,10 @@ public class CoverServiceValidationTests
     {
         var repo = new Mock<ICoverRepository>();
         var audit = new Mock<IAuditService>();
-        var calculator = new PremiumCalculator(new DefaultPremiumPolicy());
+        var calculator = new PremiumCalculator();
+        var defaultPolicy = new DefaultPremiumPolicy();
         var validator = new CreateCoverDtoValidator();
-        var service = new CoverService(repo.Object, audit.Object, calculator, validator);
+        var service = new CoverService(repo.Object, audit.Object, calculator, defaultPolicy, validator);
         var dto = new CreateCoverDto(
             StartDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
             EndDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
@@ -34,9 +35,10 @@ public class CoverServiceValidationTests
     {
         var repo = new Mock<ICoverRepository>();
         var audit = new Mock<IAuditService>();
-        var calculator = new PremiumCalculator(new DefaultPremiumPolicy());
+        var calculator = new PremiumCalculator();
+        var defaultPolicy = new DefaultPremiumPolicy();
         var validator = new CreateCoverDtoValidator();
-        var service = new CoverService(repo.Object, audit.Object, calculator, validator);
+        var service = new CoverService(repo.Object, audit.Object, calculator, defaultPolicy, validator);
         var dto = new CreateCoverDto(
             StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
             EndDate: DateOnly.FromDateTime(DateTime.UtcNow).AddDays(366),
@@ -52,9 +54,10 @@ public class CoverServiceValidationTests
         var repo = new Mock<ICoverRepository>();
         repo.Setup(r => r.AddAsync(It.IsAny<Cover>())).Returns(Task.CompletedTask);
         var audit = new Mock<IAuditService>();
-        var calculator = new PremiumCalculator(new DefaultPremiumPolicy());
+        var calculator = new PremiumCalculator();
+        var defaultPolicy = new DefaultPremiumPolicy();
         var validator = new CreateCoverDtoValidator();
-        var service = new CoverService(repo.Object, audit.Object, calculator, validator);
+        var service = new CoverService(repo.Object, audit.Object, calculator, defaultPolicy, validator);
         var dto = new CreateCoverDto(
             StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
             EndDate: DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30),
@@ -72,9 +75,10 @@ public class CoverServiceValidationTests
     {
         var repo = new Mock<ICoverRepository>();
         var audit = new Mock<IAuditService>();
-        var calculator = new PremiumCalculator(new DefaultPremiumPolicy());
+        var calculator = new PremiumCalculator();
+        var defaultPolicy = new DefaultPremiumPolicy();
         var validator = new CreateCoverDtoValidator();
-        var service = new CoverService(repo.Object, audit.Object, calculator, validator);
+        var service = new CoverService(repo.Object, audit.Object, calculator, defaultPolicy, validator);
         var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var dto = new CreateCoverDto(
             StartDate: startDate,

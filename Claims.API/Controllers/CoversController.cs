@@ -58,6 +58,6 @@ public class CoversController : ControllerBase
     [HttpPost("compute")]
     [ProducesResponseType(typeof(decimal), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult ComputePremium([FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate, [FromQuery] string coverType)
-        => Ok(_service.ComputePremium(startDate, endDate, coverType));
+    public async Task<IActionResult> ComputePremium([FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate, [FromQuery] string coverType, CancellationToken cancellationToken = default)
+        => Ok(await _service.ComputePremiumAsync(startDate, endDate, coverType, cancellationToken));
 }
