@@ -38,16 +38,16 @@ public class PremiumCalculatorTests
     }
 
     [Fact]
-    public async Task Compute_180_Days_Includes_First_30_Full_Then_70_SecondTier_Then_80_ThirdTier()
+    public async Task Compute_180_Days_Includes_First_30_Full_Then_150_SecondTier()
     {
         var start = new DateOnly(2025, 1, 1);
         var end = start.AddDays(180);
         var result = await _calculator.ComputeAsync(start, end, CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
         var premiumPerDay = 1250m * 1.10m;
         var first30 = 30 * premiumPerDay;
-        var days30to99 = 70 * premiumPerDay * 0.95m;
-        var days100to179 = 80 * premiumPerDay * 0.97m;
-        var expected = first30 + days30to99 + days100to179;
+        var days31to180 = 150 * premiumPerDay * 0.95m;
+        
+        var expected = first30 + days31to180;
         Assert.Equal(expected, result);
     }
 
@@ -59,9 +59,9 @@ public class PremiumCalculatorTests
         var result = await _calculator.ComputeAsync(start, end, CoverType.PassengerShip, _defaultPolicy, TestContext.Current.CancellationToken);
         var premiumPerDay = 1250m * 1.20m;
         var first30 = 30 * premiumPerDay;
-        var days30to99 = 70 * premiumPerDay * 0.98m;
-        var days100to364 = 265 * premiumPerDay * 0.99m;
-        var expected = first30 + days30to99 + days100to364;
+        var days31to180 = 150 * premiumPerDay * 0.98m;
+        var days181to364 = 185 * premiumPerDay * 0.99m;
+        var expected = first30 + days31to180 + days181to364;
         Assert.Equal(expected, result);
     }
 
@@ -89,15 +89,15 @@ public class PremiumCalculatorTests
     }
     
     [Fact]
-    public async Task Compute_Day_100_Boundary_Third_Tier_Starts_At_Day_101()
+    public async Task Compute_Day_180_Boundary_Third_Tier_Starts_At_Day_181()
     {
         var start = new DateOnly(2025, 1, 1);
         var premiumPerDay = 1250m * 1.10m;
-        var result100 = await _calculator.ComputeAsync(start, start.AddDays(100), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
-        var result101 = await _calculator.ComputeAsync(start, start.AddDays(101), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
-        var expected100 = 30 * premiumPerDay + 70 * premiumPerDay * 0.95m;
-        var expected101 = expected100 + 1 * premiumPerDay * 0.97m;
-        Assert.Equal(expected100, result100);
-        Assert.Equal(expected101, result101);
+        var result180 = await _calculator.ComputeAsync(start, start.AddDays(180), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
+        var result181 = await _calculator.ComputeAsync(start, start.AddDays(181), CoverType.Yacht, _defaultPolicy, TestContext.Current.CancellationToken);
+        var expected180 = 30 * premiumPerDay + 150 * premiumPerDay * 0.95m;
+        var expected181 = expected180 + 1 * premiumPerDay * 0.97m;
+        Assert.Equal(expected180, result180);
+        Assert.Equal(expected181, result181);
     }
 }

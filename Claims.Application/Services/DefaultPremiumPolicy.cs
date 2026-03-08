@@ -7,7 +7,7 @@ namespace Claims.Application.Services
     {
         public decimal BaseDayRate => 1250m;
         public int FirstTierDayCount => 30;
-        public int SecondTierEndDayExclusive => 100;
+        public int SecondTierEndDayExclusive => 180;
 
         public decimal GetTypeMultiplier(CoverType coverType) => coverType switch
         {
